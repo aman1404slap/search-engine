@@ -9,11 +9,26 @@ from .tasks import process_upload
 
 
 class UploadCreateView(APIView):
-    """POST /api/ingestion/upload/ -- multipart upload of a JSONL file."""
+    """POST /api/ingestion/upload/ -- multipart upload of a JSONL file.
+
+    Only one upload may be in flight (JSONL parsing + the per-video
+    thumbnail/embedding pipeline it queues) at a time; a new upload is
+    rejected while the most recent one is still active.
+    """
 
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, *args, **kwargs):
+        active_upload = Upload.objects.order_by("-created_at").first()
+        if active_upload and active_upload.is_active:
+            return Response(
+                {
+                    "detail": "Another upload is still processing. Wait for it to finish before starting a new one.",
+                    "active_upload": UploadSerializer(active_upload).data,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+
         file_obj = request.FILES.get("file")
         if not file_obj:
             return Response({"detail": "no file provided (expected multipart field 'file')"}, status=status.HTTP_400_BAD_REQUEST)

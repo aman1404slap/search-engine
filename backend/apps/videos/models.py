@@ -6,7 +6,7 @@ from apps.videos.constants import INGESTION_STATUS_CHOICES, REQUEST_CONFIDENCE_C
 class Video(models.Model):
     """One shot/video record, one row per line in an ingested JSONL file."""
 
-    shot_id = models.CharField(max_length=64, primary_key=True)
+    shot_id = models.CharField(max_length=255, primary_key=True)
 
     # --- source / S3 -------------------------------------------------
     source_local_path = models.CharField(max_length=1000, help_text="raw provenance.source path")

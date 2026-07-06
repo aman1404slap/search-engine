@@ -24,6 +24,8 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      secrets:
+        - hf_token
     command: sh -c "python manage.py migrate --noinput && python manage.py seed_taxonomy && python manage.py bootstrap_superuser && python manage.py runserver 0.0.0.0:8000"
     volumes:
       - ./backend:/app
@@ -52,6 +54,8 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
+      secrets:
+        - hf_token
     command: celery -A config worker --loglevel=info
     volumes:
       - ./backend:/app
@@ -80,3 +84,9 @@ services:
 volumes:
   pgdata_dev:
   frontend_node_modules:
+
+secrets:
+  # Sourced from HF_TOKEN in the project-root .env (compose auto-loads that
+  # file for variable substitution) -- only used at build time, see backend/Dockerfile.
+  hf_token:
+    environment: HF_TOKEN

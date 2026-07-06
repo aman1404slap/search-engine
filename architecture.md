@@ -92,17 +92,20 @@ Nothing here is a schema — just the ideas the system reasons about.
 flowchart TD
     START(["Start the system"]) --> DB_CHECK["Backend connects to the local database\n(already holds all prior data — nothing is recomputed)"]
     DB_CHECK --> CACHE_CHECK["Backend + worker connect to the local cache/queue"]
-    CACHE_CHECK --> LAZY["Neither the meaning-vector model nor the\nrelevance-judging model is loaded yet"]
-    LAZY --> UI_LOAD["UI loads: fetches the taxonomy once (builds the filter sidebar)\nand the first page of videos"]
-    UI_LOAD --> FIRST_USE["Models load into memory the first time they're\nactually needed — first search, or first video processed"]
-    FIRST_USE --> WARM["From then on the process keeps the model warm;\nonly the very first use after a fresh restart is slow"]
+    CACHE_CHECK --> PRELOAD["The actual serving processes (API server,\nCelery worker) load both ML models into memory\nbefore taking any request/task"]
+    PRELOAD --> UI_LOAD["UI loads: fetches the taxonomy once (builds the filter sidebar)\nand the first page of videos"]
+    UI_LOAD --> WARM["First search / first video processed is already fast —\nno per-request or per-task load-on-demand"]
 ```
 
-The important idea: starting the system is cheap and instant. The two ML
-models are only pulled into memory lazily, on first real use, and then stay
-warm for as long as that process keeps running — so the *first* search or
-the *first* video processed after a restart is noticeably slower than every
-one after it.
+The important idea: the model *weights* are baked into the backend/worker
+image at build time (so no process ever downloads them over the network at
+runtime), and each long-running server process (the API server, each Celery
+worker) loads both models into memory once, at process start, before it ever
+serves a request or picks up a task. One-off commands (migrate, seed_taxonomy,
+management commands, tests) deliberately skip this preload so they stay fast
+and lightweight — only the processes that actually stay warm and handle
+search/ingestion traffic pay the load cost, and they pay it once, up front,
+not on whichever request happens to be first.
 
 ---
 

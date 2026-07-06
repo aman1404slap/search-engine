@@ -170,4 +170,30 @@ def hybrid_search(query_text: str, filters: dict, top_k: int = 20, min_confidenc
         # together -- the reranked block always leads, in its own new order.
         results = head + tail
 
-    return results[:top_k]
+    return _group_by_video(results, top_k)
+
+
+def _group_by_video(results: list[dict], top_k: int) -> list[dict]:
+    """Collapse per-span results into one entry per video, since a video that
+    matches in several disjoint timeframes should surface once in a result
+    list, not once per timeframe. The video-level confidence is its
+    best-matching span's; each span keeps its own confidence untouched.
+    `top_k` now bounds the number of videos returned, not spans."""
+    by_video = {}
+    for r in results:
+        by_video.setdefault(r["video_id"], []).append(r)
+
+    grouped = []
+    for video_id, spans in by_video.items():
+        best = max(spans, key=lambda s: s["confidence"])
+        grouped.append(
+            {
+                "video_id": video_id,
+                "confidence": best["confidence"],
+                "matched_text": best["matched_text"],
+                "spans": sorted(spans, key=lambda s: s["start_s"]),
+            }
+        )
+
+    grouped.sort(key=lambda r: r["confidence"], reverse=True)
+    return grouped[:top_k]

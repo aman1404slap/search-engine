@@ -1,5 +1,7 @@
 :root {
   --bg: #0d0e12;
+  --bg-blob: #191b30;
+  --topbar-bg: rgba(13, 14, 18, 0.7);
   --bg-elevated: #16181f;
   --bg-elevated-2: #1e212b;
   --bg-hover: #262a36;
@@ -24,11 +26,36 @@
   --shadow-lift: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
+:root[data-theme="light"] {
+  --bg: #f4f5f9;
+  --bg-blob: #e6e4fb;
+  --topbar-bg: rgba(244, 245, 249, 0.7);
+  --bg-elevated: #ffffff;
+  --bg-elevated-2: #eef0f6;
+  --bg-hover: #e3e6f0;
+  --border: #dfe2ea;
+  --border-soft: #e8eaf1;
+  --text: #1b1d23;
+  --text-dim: #565b6b;
+  --text-faint: #868ba0;
+  --accent: #6d5ef0;
+  --accent-2: #4f46e5;
+  --accent-soft: rgba(109, 94, 240, 0.12);
+  --accent-soft-strong: rgba(109, 94, 240, 0.24);
+  --success: #15803d;
+  --success-soft: rgba(21, 128, 61, 0.12);
+  --warning: #b45309;
+  --warning-soft: rgba(180, 83, 9, 0.12);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.12);
+  --shadow-lift: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
 .app-shell {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(1200px 600px at 20% -10%, #191b30 0%, var(--bg) 55%);
+  background: radial-gradient(1200px 600px at 20% -10%, var(--bg-blob) 0%, var(--bg) 55%);
   color: var(--text);
   overflow: hidden;
 }
@@ -40,7 +67,7 @@
   gap: 20px;
   padding: 14px 24px;
   border-bottom: 1px solid var(--border);
-  background: rgba(13, 14, 18, 0.7);
+  background: var(--topbar-bg);
   backdrop-filter: blur(10px);
   flex-shrink: 0;
 }
@@ -572,7 +599,7 @@ button:disabled {
   background: linear-gradient(90deg, var(--accent), var(--accent-2));
 }
 .timeline__segment--highlighted {
-  box-shadow: 0 0 0 2px rgba(139, 123, 255, 0.35);
+  box-shadow: 0 0 0 2px var(--accent-soft-strong);
 }
 .timeline__playhead {
   position: absolute;
@@ -781,7 +808,7 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(1200px 600px at 20% -10%, #191b30 0%, var(--bg) 55%);
+  background: radial-gradient(1200px 600px at 20% -10%, var(--bg-blob) 0%, var(--bg) 55%);
   color: var(--text);
 }
 .login-card {
@@ -858,6 +885,112 @@ button:disabled {
   font-size: 0.8rem;
   color: var(--text-dim);
   margin: 8px 0 0;
+}
+
+/* ---------- Uploads screen ---------- */
+.uploads-screen {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  padding: 24px 32px 40px;
+  max-width: 880px;
+  margin: 0 auto;
+  width: 100%;
+}
+.uploads-screen__header h1 {
+  margin: 0 0 6px;
+  font-size: 1.3rem;
+}
+.uploads-screen__form {
+  margin: 18px 0;
+}
+.uploads-screen__blocked {
+  color: var(--warning);
+  background: var(--warning-soft);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  margin: 0 0 18px;
+}
+.uploads-screen__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.uploads-row {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  padding: 14px 16px;
+}
+.uploads-row__main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.uploads-row__name {
+  font-weight: 600;
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.uploads-row__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  background: var(--bg-elevated-2);
+  color: var(--text-dim);
+}
+.uploads-row__status--parsing,
+.uploads-row__status--processing_media {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.uploads-row__status--completed {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.uploads-row__status--completed_with_errors {
+  background: var(--warning-soft);
+  color: var(--warning);
+}
+.uploads-row__status--failed {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.upload-progress__fill--completed {
+  background: var(--success);
+}
+.upload-progress__fill--completed_with_errors {
+  background: var(--warning);
+}
+.upload-progress__fill--failed {
+  background: var(--danger);
+}
+
+.uploads-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 10px;
+  font-size: 0.75rem;
+  color: var(--text-faint);
+}
+.uploads-row__meta--danger {
+  color: var(--danger);
+}
+.uploads-row__time {
+  margin-left: auto;
 }
 
 /* ---------- Taxonomy admin ---------- */

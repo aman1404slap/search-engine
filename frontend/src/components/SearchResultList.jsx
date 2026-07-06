@@ -34,7 +34,7 @@ export default function SearchResultList({
   }
 
   function rowKey(item) {
-    return isSearch ? `${item.video_id}-${item.start_s}` : item.shot_id;
+    return isSearch ? item.video_id : item.shot_id;
   }
 
   function renderRow(item) {
@@ -47,7 +47,7 @@ export default function SearchResultList({
         video={video}
         resultMeta={resultMeta}
         selected={key === selectedKey}
-        onClick={() => onSelect(video.shot_id, resultMeta)}
+        onClick={() => onSelect(video.shot_id)}
       />
     );
   }
