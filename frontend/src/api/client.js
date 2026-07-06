@@ -1,8 +1,22 @@
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8000";
+
+function csrfToken() {
+  const match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 async function request(path, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
+  const headers = options.body instanceof FormData ? {} : { "Content-Type": "application/json" };
+  if (!SAFE_METHODS.has(method)) {
+    const token = csrfToken();
+    if (token) headers["X-CSRFToken"] = token;
+  }
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: options.body instanceof FormData ? undefined : { "Content-Type": "application/json" },
+    credentials: "include",
+    headers,
     ...options,
   });
   if (!res.ok) {
@@ -22,6 +36,12 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  getCsrf: () => request("/api/auth/csrf/"),
+  login: (username, password) =>
+    request("/api/auth/login/", { method: "POST", body: JSON.stringify({ username, password }) }),
+  logout: () => request("/api/auth/logout/", { method: "POST" }),
+  me: () => request("/api/auth/me/"),
+
   getTaxonomy: () => request("/api/taxonomy/"),
   addTaxonomyValue: (facetKey, body) =>
     request(`/api/taxonomy/${facetKey}/values/`, { method: "POST", body: JSON.stringify(body) }),

@@ -1,0 +1,82 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-video_search}
+      POSTGRES_USER: ${POSTGRES_USER:-video_search}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-video_search}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-video_search}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: sh -c "python manage.py migrate --noinput && python manage.py seed_taxonomy && python manage.py bootstrap_superuser && python manage.py runserver 0.0.0.0:8000"
+    volumes:
+      - ./backend:/app
+      - .:/host:ro # lets `manage.py ingest_jsonl /host/<file>.jsonl` reach repo-root dataset files
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      # Passed through from whatever shell you run `docker compose up` in --
+      # export temporary AWS creds there the same way the old bare-metal
+      # workflow did. Unset is fine if boto3 has another credential source.
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_SESSION_TOKEN
+      # taxonomy.txt lives at the repo root, which is bind-mounted to /host
+      # (see the /host volume below) -- REPO_ROOT inside this container is
+      # just /app's parent, not the actual host repo root.
+      - TAXONOMY_TXT_PATH=/host/taxonomy.txt
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  celery:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: celery -A config worker --loglevel=info
+    volumes:
+      - ./backend:/app
+    env_file: .env
+    environment:
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_SESSION_TOKEN
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "5173:5173"
+    env_file: frontend/.env
+
+volumes:
+  pgdata_dev:
+  frontend_node_modules:

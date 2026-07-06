@@ -1,0 +1,17 @@
+# Applies only to builds whose context is the repo root (currently: the
+# backend image -- it needs taxonomy.txt, which lives outside backend/).
+
+.git/
+frontend/
+*.rdb
+*.jsonl
+
+backend/.venv/
+backend/media/
+backend/staticfiles/
+backend/db.sqlite3
+backend/.env
+.env
+.env.*
+**/__pycache__/
+**/*.pyc

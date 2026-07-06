@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "./api/client";
+import { useAuth } from "./context/AuthContext";
 import { useTaxonomy } from "./hooks/useTaxonomy";
 import { useVideos } from "./hooks/useVideos";
 import FilterSidebar from "./components/FilterSidebar";
+import LoginForm from "./components/LoginForm";
 import SearchBar from "./components/SearchBar";
 import SearchResultList from "./components/SearchResultList";
 import VideoPlayerPane from "./components/VideoPlayerPane";
@@ -11,6 +13,15 @@ import TaxonomyAdminModal from "./components/TaxonomyAdminModal";
 import "./styles/app.css";
 
 export default function App() {
+  const { user, checking } = useAuth();
+
+  if (checking) return null;
+  if (!user) return <LoginForm />;
+  return <VideoSearchApp />;
+}
+
+function VideoSearchApp() {
+  const { user, logout } = useAuth();
   const { facets, reload: reloadTaxonomy } = useTaxonomy();
 
   const [filters, setFilters] = useState({});
@@ -96,6 +107,10 @@ export default function App() {
           </button>
           <button className="primary-button" onClick={() => setShowUpload(true)}>
             ⬆ Upload JSONL
+          </button>
+          <span className="topbar__user">{user}</span>
+          <button className="ghost-button" onClick={logout}>
+            Log out
           </button>
         </div>
       </header>

@@ -1,0 +1,61 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    # No named volume: every `down` + `up` (i.e. every deploy) starts from an
+    # empty database on purpose -- see README.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+
+  backend:
+    image: ${ECR_REGISTRY}/video-search-backend:${IMAGE_TAG:-latest}
+    command: sh -c "python manage.py migrate --noinput && python manage.py seed_taxonomy && python manage.py bootstrap_superuser && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 3"
+    volumes:
+      - media_data:/app/media
+    env_file: .env
+    environment:
+      # Only needed if the EC2 instance doesn't have an IAM role with S3
+      # read access -- prefer an instance role over these if convenient.
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_SESSION_TOKEN
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  celery:
+    image: ${ECR_REGISTRY}/video-search-backend:${IMAGE_TAG:-latest}
+    command: celery -A config worker --loglevel=info
+    volumes:
+      - media_data:/app/media
+    env_file: .env
+    environment:
+      - AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY
+      - AWS_SESSION_TOKEN
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  frontend:
+    image: ${ECR_REGISTRY}/video-search-frontend:${IMAGE_TAG:-latest}
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  media_data:
