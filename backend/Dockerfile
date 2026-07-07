@@ -29,7 +29,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # which is what a "sending unauthenticated request" log line at build time
 # means; passing the token (docker-compose.dev.yml wires this secret up from
 # the HF_TOKEN in .env) avoids that and raises the anonymous rate limit.
-ARG EMBEDDING_MODEL_NAME=sentence-transformers/all-MiniLM-L6-v2
+ARG EMBEDDING_MODEL_NAME=BAAI/bge-small-en-v1.5
 ARG SEARCH_RERANK_MODEL_NAME=cross-encoder/ms-marco-MiniLM-L-6-v2
 RUN --mount=type=secret,id=hf_token \
     HF_TOKEN="$(cat /run/secrets/hf_token 2>/dev/null || true)" \

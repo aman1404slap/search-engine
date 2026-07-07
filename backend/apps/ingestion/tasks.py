@@ -139,7 +139,7 @@ def compute_embeddings(shot_id):
 
             vectors = embed_texts([seg.text for seg in segments])
             for seg, vec in zip(segments, vectors):
-                seg.embedding = vec.tobytes()
+                seg.embedding = vec
                 seg.save(update_fields=["embedding"])
 
         from apps.search.index import bump_version

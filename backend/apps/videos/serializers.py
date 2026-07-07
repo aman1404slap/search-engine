@@ -7,7 +7,21 @@ from apps.videos.models import Segment, Video
 class SegmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Segment
-        fields = ["segment_id", "start_s", "end_s", "label", "text", "confidence"]
+        fields = [
+            "segment_id",
+            "granularity",
+            "start_s",
+            "end_s",
+            "label",
+            "text",
+            "confidence",
+            "event_type",
+            "interaction_kind",
+            "people_visible",
+            "conversation_visible",
+            "object_names",
+            "actor_roles",
+        ]
 
 
 class VideoSummarySerializer(serializers.ModelSerializer):
@@ -55,7 +69,7 @@ class VideoSummarySerializer(serializers.ModelSerializer):
 class VideoDetailSerializer(VideoSummarySerializer):
     """Extends the summary with everything needed for the right-hand detail/player pane."""
 
-    segments = SegmentSerializer(many=True, read_only=True)
+    segments = serializers.SerializerMethodField()
     transcript = serializers.SerializerMethodField()
 
     class Meta(VideoSummarySerializer.Meta):
@@ -72,6 +86,14 @@ class VideoDetailSerializer(VideoSummarySerializer):
             "segments",
             "transcript",
         ]
+
+    def get_segments(self, obj):
+        # obj.segments is expected to be prefetched (.prefetch_related("segments"))
+        # so filtering in Python hits no extra query. Only "event" granularity is
+        # shown here -- the "video"/"episode" rows exist for search (apps.search)
+        # but would misrepresent this list, titled "Events" in the UI.
+        events = [seg for seg in obj.segments.all() if seg.granularity == "event"]
+        return SegmentSerializer(events, many=True).data
 
     def get_transcript(self, obj):
         turns = obj.raw_data.get("speech", {}).get("turns", [])

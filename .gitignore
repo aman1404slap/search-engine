@@ -22,3 +22,5 @@ frontend/.env.local
 saple1.json
 video-audit_runs_ego_full_bemyeyes_20260418_semantic_v2_ego_assist.jsonl
 taxonomy.txt
+
+self-understand.txt

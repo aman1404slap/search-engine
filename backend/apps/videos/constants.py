@@ -40,3 +40,9 @@ INGESTION_STATUS_CHOICES = [
     ("ready", "Ready"),
     ("failed", "Failed"),
 ]
+
+GRANULARITY_CHOICES = [
+    ("video", "Video"),
+    ("episode", "Episode"),
+    ("event", "Event"),
+]

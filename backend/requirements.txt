@@ -39,6 +39,7 @@ narwhals==2.23.0
 networkx==3.6.1
 numpy==2.5.0
 packaging==26.2
+pgvector==0.4.2
 pillow==12.3.0
 prompt_toolkit==3.0.52
 psycopg2-binary==2.9.10

@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "django.contrib.postgres",
     "rest_framework",
     "django_filters",
     "corsheaders",
@@ -179,7 +180,7 @@ S3_PRESIGNED_URL_EXPIRY_SECONDS = int(os.environ.get("S3_PRESIGNED_URL_EXPIRY_SE
 # ---------------------------------------------------------------------------
 # Search
 # ---------------------------------------------------------------------------
-EMBEDDING_MODEL_NAME = os.environ.get("EMBEDDING_MODEL_NAME", "sentence-transformers/all-MiniLM-L6-v2")
+EMBEDDING_MODEL_NAME = os.environ.get("EMBEDDING_MODEL_NAME", "BAAI/bge-small-en-v1.5")
 EMBEDDING_DIM = int(os.environ.get("EMBEDDING_DIM", "384"))
 SEARCH_DENSE_WEIGHT = float(os.environ.get("SEARCH_DENSE_WEIGHT", "0.6"))
 SEARCH_KEYWORD_WEIGHT = float(os.environ.get("SEARCH_KEYWORD_WEIGHT", "0.4"))
@@ -190,14 +191,18 @@ SEARCH_SPAN_MERGE_GAP_SECONDS = float(os.environ.get("SEARCH_SPAN_MERGE_GAP_SECO
 # only one clause doesn't score as if it matched the whole query.
 SEARCH_DECOMPOSE_QUERY = os.environ.get("SEARCH_DECOMPOSE_QUERY", "true").lower() == "true"
 
-# Cross-encoder reranking of the top-N stage-1 results. Only ever runs on a
-# small shortlist (see apps/search/reranker.py) so it's independent of corpus
+# Cross-encoder reranking of the top-N stage-1 results, run *before* grouping
+# spans by video so that (almost) every span which could end up in a returned
+# video's best-match slot gets a real cross-encoder score -- otherwise the
+# reranked (cross-encoder sigmoid) and un-reranked (min-max fusion) results
+# share one "confidence" field on two incomparable scales. Only ever runs on
+# a shortlist (see apps/search/reranker.py) so it's independent of corpus
 # size; disable entirely with SEARCH_RERANK_ENABLED=false.
 SEARCH_RERANK_ENABLED = os.environ.get("SEARCH_RERANK_ENABLED", "true").lower() == "true"
 SEARCH_RERANK_MODEL_NAME = os.environ.get(
     "SEARCH_RERANK_MODEL_NAME", "cross-encoder/ms-marco-MiniLM-L-6-v2"
 )
-SEARCH_RERANK_TOP_N = int(os.environ.get("SEARCH_RERANK_TOP_N", "10"))
+SEARCH_RERANK_POOL_SIZE = int(os.environ.get("SEARCH_RERANK_POOL_SIZE", "120"))
 
 # Path to the static taxonomy definition used by `manage.py seed_taxonomy`.
 TAXONOMY_TXT_PATH = Path(os.environ.get("TAXONOMY_TXT_PATH", REPO_ROOT / "taxonomy.txt"))

@@ -19,5 +19,6 @@ class VideoTagAdmin(admin.ModelAdmin):
 
 @admin.register(Segment)
 class SegmentAdmin(admin.ModelAdmin):
-    list_display = ["segment_id", "video", "start_s", "end_s", "confidence"]
+    list_display = ["segment_id", "video", "granularity", "start_s", "end_s", "confidence"]
+    list_filter = ["granularity"]
     search_fields = ["segment_id", "video__shot_id", "text"]
