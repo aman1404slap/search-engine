@@ -5,6 +5,16 @@ Redis only stores a small integer "version" used to know when to invalidate --
 the ingestion pipeline calls `bump_version()` after writing new embeddings, and
 the next `get_segment_index()` call in *this* process notices the version
 changed and rebuilds from the DB.
+
+Embeddings are stored in Postgres as a real pgvector column (see
+apps.videos.models.Segment.embedding), not raw bytes -- pgvector-django hands
+back each row's embedding as a numpy float32 array already, so no manual
+struct packing/unpacking is needed here. Query-time scoring still does exact
+brute-force cosine over this in-memory array (rather than pgvector's ANN
+index) because the ranking fusion in apps.search.ranking needs full-pool score
+statistics (min-max normalization across every filtered candidate), not just
+an approximate top-K neighbor list -- at this corpus size that's cheap enough
+to keep exact.
 """
 import numpy as np
 from django.conf import settings
@@ -51,12 +61,9 @@ def _build_index():
         "segment_id", "video_id", "start_s", "end_s", "text", "confidence", "embedding"
     )
     for row in qs:
-        embedding_bytes = row["embedding"]
-        if not embedding_bytes:
-            continue
-        vec = np.frombuffer(embedding_bytes, dtype=np.float32)
-        if vec.shape[0] != settings.EMBEDDING_DIM:
-            # Skip malformed/mismatched-dimension rows rather than corrupting the index.
+        vec = row["embedding"]
+        if vec is None or vec.shape[0] != settings.EMBEDDING_DIM:
+            # Skip missing/malformed/mismatched-dimension rows rather than corrupting the index.
             continue
         segment_ids.append(row["segment_id"])
         video_ids.append(row["video_id"])

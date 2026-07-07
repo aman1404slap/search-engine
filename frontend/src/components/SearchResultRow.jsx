@@ -55,7 +55,9 @@ export default function SearchResultRow({ video, resultMeta, selected, onClick }
               {Math.round(resultMeta.confidence * 100)}%
             </span>
             <span className="search-result-row__timespan">
-              {formatTime(resultMeta.start_s)}&ndash;{formatTime(resultMeta.end_s)}
+              {resultMeta.spans.length > 1
+                ? `${resultMeta.spans.length} matching moments`
+                : `${formatTime(resultMeta.spans[0].start_s)}–${formatTime(resultMeta.spans[0].end_s)}`}
             </span>
           </>
         ) : (

@@ -1,0 +1,113 @@
+version: 2.1
+
+orbs:
+  aws-cli: circleci/aws-cli@4.1
+
+jobs:
+  test-backend:
+    docker:
+      - image: cimg/python:3.12
+      - image: postgres:16-alpine
+        environment:
+          POSTGRES_DB: video_search
+          POSTGRES_USER: video_search
+          POSTGRES_PASSWORD: video_search
+      - image: redis:7-alpine
+    environment:
+      POSTGRES_DB: video_search
+      POSTGRES_USER: video_search
+      POSTGRES_PASSWORD: video_search
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: "5432"
+      DJANGO_SECRET_KEY: ci-test-secret-key
+      REDIS_URL: redis://localhost:6379/0
+      CELERY_TASK_ALWAYS_EAGER: "true"
+    steps:
+      - checkout
+      - run:
+          name: Install ffmpeg
+          command: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run:
+          name: Install Python dependencies
+          command: pip install -r backend/requirements.txt
+      - run:
+          name: Django checks
+          command: cd backend && python manage.py check
+      - run:
+          name: Django tests
+          command: cd backend && python manage.py test
+
+  build-and-push:
+    machine:
+      image: ubuntu-2404:current
+    steps:
+      - checkout
+      - aws-cli/setup
+      - run:
+          name: Login to ECR
+          command: |
+            aws ecr get-login-password --region "$AWS_DEFAULT_REGION" | \
+              docker login --username AWS --password-stdin "$ECR_REGISTRY"
+      - run:
+          name: Build & push backend image
+          command: |
+            docker build \
+              -f backend/Dockerfile \
+              -t "$ECR_REGISTRY/video-search-backend:$CIRCLE_SHA1" \
+              -t "$ECR_REGISTRY/video-search-backend:latest" \
+              .
+            docker push "$ECR_REGISTRY/video-search-backend:$CIRCLE_SHA1"
+            docker push "$ECR_REGISTRY/video-search-backend:latest"
+      - run:
+          name: Build & push frontend image
+          command: |
+            docker build \
+              -t "$ECR_REGISTRY/video-search-frontend:$CIRCLE_SHA1" \
+              -t "$ECR_REGISTRY/video-search-frontend:latest" \
+              frontend/
+            docker push "$ECR_REGISTRY/video-search-frontend:$CIRCLE_SHA1"
+            docker push "$ECR_REGISTRY/video-search-frontend:latest"
+
+  deploy:
+    docker:
+      - image: cimg/base:2025.01
+    steps:
+      - checkout
+      # Add the deploy key's fingerprint here after uploading it in
+      # CircleCI project settings -> SSH Keys (see README's Deployment section).
+      - add_ssh_keys:
+          fingerprints:
+            - "REPLACE_WITH_SSH_KEY_FINGERPRINT"
+      - run:
+          name: Copy docker-compose.prod.yml to EC2
+          command: |
+            scp -o StrictHostKeyChecking=no docker-compose.prod.yml \
+              "$SSH_USER@$SSH_HOST:~/video-search/docker-compose.prod.yml"
+      - run:
+          name: Pull new images and restart the stack
+          command: |
+            ssh -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" "
+              cd ~/video-search &&
+              export ECR_REGISTRY='$ECR_REGISTRY' &&
+              export IMAGE_TAG='$CIRCLE_SHA1' &&
+              docker compose --env-file .env -f docker-compose.prod.yml down &&
+              docker compose --env-file .env -f docker-compose.prod.yml pull &&
+              docker compose --env-file .env -f docker-compose.prod.yml up -d
+            "
+
+workflows:
+  build-test-deploy:
+    jobs:
+      - test-backend
+      - build-and-push:
+          requires: [test-backend]
+          context: video-search-aws
+          filters:
+            branches:
+              only: main
+      - deploy:
+          requires: [build-and-push]
+          context: video-search-aws
+          filters:
+            branches:
+              only: main

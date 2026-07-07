@@ -1,4 +1,4 @@
-"""Heuristic query decomposition for compound queries like "walking in rain".
+"""Heuristic query decomposition for compound queries like "walking while it rains".
 
 Dense/keyword scoring against a single query vector treats a query as one bag
 of meaning, so a segment that's strongly about only ONE half of a compound
@@ -8,13 +8,23 @@ concept clauses and requiring every clause to score reasonably (via a min
 across clauses, see ranking.hybrid_search) approximates AND semantics.
 
 This is intentionally simple regex-based splitting, not real parsing -- it
-handles "X in/with/while/during/and Y" patterns well and does nothing (falls
-back to the whole query as one concept) on queries without a connective.
+handles "X while/during/when/and/then/after/before Y" patterns well and does
+nothing (falls back to the whole query as one concept) on queries without a
+connective.
+
+"in" and "with" are deliberately NOT connectives here even though they can
+join two independent conditions ("walking in rain"), because they're just as
+commonly a plain preposition inside ONE descriptive clause ("people in the
+kitchen", "person with a hammer") -- splitting those wrongly treats the
+sentence's own subject/location as a separate required condition, and the
+min()-across-concepts combination in ranking.hybrid_search then caps a
+perfectly matching segment's score at whatever its weaker, spuriously-split
+half achieves. The words kept below are far more reliably two-clause markers.
 """
 import re
 
 _CONNECTIVE_RE = re.compile(
-    r"\b(?:while|during|when|with|in|and|then|after|before)\b|,", re.IGNORECASE
+    r"\b(?:while|during|when|and|then|after|before)\b|,", re.IGNORECASE
 )
 _MAX_CONCEPTS = 4
 _MIN_CONCEPT_CHARS = 2

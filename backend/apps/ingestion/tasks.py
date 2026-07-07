@@ -74,6 +74,8 @@ def process_upload(upload_id):
         upload.processed_records = processed
         upload.failed_records = failed
         upload.save(update_fields=["status", "error_message", "total_records", "processed_records", "failed_records", "updated_at"])
+        for shot_id in ingested_shot_ids:
+            process_video_media.delay(shot_id)
         return
 
     upload.total_records = total
@@ -137,7 +139,7 @@ def compute_embeddings(shot_id):
 
             vectors = embed_texts([seg.text for seg in segments])
             for seg, vec in zip(segments, vectors):
-                seg.embedding = vec.tobytes()
+                seg.embedding = vec
                 seg.save(update_fields=["embedding"])
 
         from apps.search.index import bump_version
